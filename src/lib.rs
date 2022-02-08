@@ -1,7 +1,10 @@
-use serde_json::json;
 use worker::*;
 
 mod utils;
+mod handler;
+mod config;
+use config::config;
+mod kv; 
 
 fn log_request(req: &Request) {
     console_log!(
@@ -25,30 +28,23 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
     // provide arbitrary data that will be accessible in each route via the `ctx.data()` method.
     let router = Router::new();
 
+    config::load_config_from_env(&env);
+
     // Add as many routes as your Worker needs! Each route will get a `Request` for handling HTTP
     // functionality and a `RouteContext` which you can use to  and get route parameters and
     // Environment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     router
-        .get("/", |_, _| Response::ok("Hello from Workers!"))
-        .post_async("/form/:field", |mut req, ctx| async move {
-            if let Some(name) = ctx.param("field") {
-                let form = req.form_data().await?;
-                match form.get(name) {
-                    Some(FormEntry::Field(value)) => {
-                        return Response::from_json(&json!({ name: value }))
-                    }
-                    Some(FormEntry::File(_)) => {
-                        return Response::error("`field` param in form shouldn't be a File", 422);
-                    }
-                    None => return Response::error("Bad Request", 400),
-                }
-            }
-
-            Response::error("Bad Request", 400)
+        .get("/", |req, ctx| {
+            config::load_config_from_ctx(&ctx);
+            handler::index_handler(req, ctx)
         })
-        .get("/worker-version", |_, ctx| {
-            let version = ctx.var("WORKERS_RS_VERSION")?.to_string();
-            Response::ok(version)
+        .get_async("/:key", |req, ctx| {
+            config::load_config_from_ctx(&ctx);
+            handler::redirect_handler(req, ctx)
+        })
+        .post_async(&config().api_path, |req, ctx| {
+            config::load_config_from_ctx(&ctx);
+            handler::api_handler(req, ctx)
         })
         .run(req, env)
         .await

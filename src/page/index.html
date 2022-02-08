@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<body>
+    <form>
+        <label>Url</label>
+        <input id="url" type="text"/>
+        <label>Token</label>
+        <input id="token" type="text"/>
+        <label>Key</label>
+        <input id="key" type="text"/>
+        <button type="submit" id="submit">Submit</button>
+    </form>
+    <script>
+        const button = document.getElementById("submit")
+
+        button.onclick = submit
+        function submit(e) {
+            e.preventDefault()
+            var url = document.getElementById("url").value;
+            var token = document.getElementById("token").value;
+            var key = document.getElementById("key").value;
+
+            var httpRequest = new XMLHttpRequest();
+            httpRequest.open('POST', '/api', true);
+            httpRequest.setRequestHeader("Content-type","application/json");
+            httpRequest.send(JSON.stringify({
+                "url": url,
+                "token": token,
+                "key": key,
+            }));
+            
+            httpRequest.onreadystatechange = function () {
+                if (httpRequest.readyState == 4 && httpRequest.status == 200) {
+                    var json = httpRequest.responseText;
+                    console.log(json);
+                }
+            };
+
+            return false
+        }
+    </script>
+</body>
